@@ -11,6 +11,7 @@ import tempfile
 from pathlib import Path
 
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -22,6 +23,7 @@ from reverse_search import build_footprint_search_queries
 from web_search import search_web
 
 ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env")
 DB_PATH = Path(os.getenv("IMAGESCOUT_DB", str(ROOT / "data" / "image_index.db"))).expanduser()
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 MAX_UPLOAD = int(os.getenv("IMAGESCOUT_MAX_UPLOAD", str(20 * 1024 * 1024)))
