@@ -63,6 +63,7 @@ class ImageIndexDB:
 
     def __init__(self, db_path: str | Path = "image_index.db") -> None:
         self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row
         self._init_schema()
