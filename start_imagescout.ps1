@@ -12,7 +12,19 @@ if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Test-Path ".venv")) {
-    py -3.11 -m venv .venv
+    $created = $false
+    foreach ($version in @("3.13", "3.12", "3.11")) {
+        & py "-$version" -m venv .venv 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $created = $true
+            Write-Host "Created virtual environment with Python $version."
+            break
+        }
+        if (Test-Path ".venv") { Remove-Item ".venv" -Recurse -Force }
+    }
+    if (-not $created) {
+        throw "Python 3.11, 3.12 or 3.13 was not found. Install Python 3.11+ and retry."
+    }
 }
 
 $python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
