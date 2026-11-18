@@ -1,0 +1,96 @@
+name: ImageScout Cloud Crawler
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_url:
+        description: 'Public website URL to crawl'
+        required: true
+        default: 'https://example.com'
+        type: string
+      depth:
+        description: 'Maximum crawl depth (0-5)'
+        required: true
+        default: '2'
+        type: string
+      max_pages:
+        description: 'Maximum pages (1-200)'
+        required: true
+        default: '30'
+        type: string
+      use_js:
+        description: 'Use Headless Chromium'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Set up Chrome for JavaScript crawling
+        if: ${{ inputs.use_js }}
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Validate inputs
+        env:
+          SEED_URL: ${{ inputs.seed_url }}
+          DEPTH: ${{ inputs.depth }}
+          MAX_PAGES: ${{ inputs.max_pages }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlparse
+          u = urlparse(os.environ['SEED_URL'])
+          if u.scheme not in ('http', 'https') or not u.hostname:
+              raise SystemExit('seed_url must be an absolute http(s) URL')
+          depth, pages = int(os.environ['DEPTH']), int(os.environ['MAX_PAGES'])
+          if not 0 <= depth <= 5: raise SystemExit('depth must be between 0 and 5')
+          if not 1 <= pages <= 200: raise SystemExit('max_pages must be between 1 and 200')
+          PY
+
+      - name: Run ImageScout Crawler
+        env:
+          SEED_URL: ${{ inputs.seed_url }}
+          DEPTH: ${{ inputs.depth }}
+          MAX_PAGES: ${{ inputs.max_pages }}
+          USE_JS: ${{ inputs.use_js }}
+        run: |
+          EXTRA_FLAGS=()
+          if [ "$USE_JS" = "true" ]; then EXTRA_FLAGS+=("--js"); fi
+          python image_scout.py --db image_index.db crawl "$SEED_URL" \
+            --depth "$DEPTH" --max-pages "$MAX_PAGES" --delay 1.0 "${EXTRA_FLAGS[@]}"
+
+      - name: Export Index Stats
+        if: always()
+        run: |
+          if [ -f image_index.db ]; then
+            python image_scout.py --db image_index.db stats > crawl_stats.json
+            cat crawl_stats.json
+          fi
+
+      - name: Upload Crawl Index Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagescout-crawl-index-${{ github.run_number }}
+          path: |
+            image_index.db
+            crawl_stats.json
+          if-no-files-found: warn
+          retention-days: 14
