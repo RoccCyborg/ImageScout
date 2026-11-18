@@ -1,6 +1,8 @@
 from pathlib import Path
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from PIL import Image
 
 from footprint import analyze_footprint, hamming_distance, similarity_percent
@@ -25,10 +27,14 @@ def test_hamming_distance_and_similarity():
 
 
 def test_html_image_extraction():
-    html = \'\'\'<html><head><title>Demo</title><meta property="og:image" content="/cover.jpg"></head>
-    <body><img src="/a.jpg" alt="A"><img data-src="/lazy.webp"><div style="background-image:url('/bg.png')"></div>
-    <a href="/page">Next</a></body></html>\'\'\'
-    title, links, images = extract_links_and_images(html, "https://example.org/start")
+    html = """<html><head><title>Demo</title>
+    <meta property="og:image" content="/cover.jpg"></head>
+    <body><img src="/a.jpg" alt="A"><img data-src="/lazy.webp">
+    <div style="background-image:url('/bg.png')"></div>
+    <a href="/page">Next</a></body></html>"""
+    title, links, images = extract_links_and_images(
+        html, "https://example.org/start"
+    )
     assert title == "Demo"
     assert "https://example.org/page" in links
     urls = {url for url, _ in images}
